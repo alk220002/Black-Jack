@@ -1,0 +1,49 @@
+/* REQ-001 | Msari Alkaabi */
+.controls {
+  margin-top: 20px;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.btn {
+  padding: 10px 28px;
+  font-size: 1rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  letter-spacing: 0.04em;
+}
+
+.btn:active {
+  transform: scale(0.96);
+}
+
+.btn--hit {
+  background: #27ae60;
+  color: #fff;
+}
+
+.btn--hit:hover {
+  background: #1e8449;
+}
+
+.btn--stand {
+  background: #e74c3c;
+  color: #fff;
+}
+
+.btn--stand:hover {
+  background: #c0392b;
+}
+
+.btn--new {
+  background: #2980b9;
+  color: #fff;
+}
+
+.btn--new:hover {
+  background: #21618c;
+}

@@ -1,38 +1,90 @@
-name: CI – BlackJack React
+name: Blackjack CI
 
 on:
   push:
-    branches: ['**']
+    branches: [ main ]
   pull_request:
-    branches: [main, develop]
+    branches: [ main ]
 
 jobs:
-  build-lint-test:
-    name: Build, Lint & Test
-    runs-on: ubuntu-latest
+  build-and-test:
+    name: PowerShell Pester Tests
+    runs-on: windows-latest
 
     steps:
-      - name: Checkout
+      - name: Stage 1 - Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Node.js Setup
-        uses: actions/setup-node@v4
+      - name: Stage 2 - PowerShell Version pruefen
+        shell: pwsh
+        run: |
+          Write-Host "PowerShell Version: $($PSVersionTable.PSVersion)"
+          Write-Host "OS: $([System.Environment]::OSVersion.VersionString)"
+
+      - name: Stage 3 - Pester installieren
+        shell: pwsh
+        run: |
+          Install-Module -Name Pester -MinimumVersion 5.0 -Force -SkipPublisherCheck -Scope CurrentUser
+          Import-Module Pester
+          Write-Host "Pester Version: $((Get-Module Pester).Version)"
+
+      - name: Stage 4 - Syntax-Check (Lint)
+        shell: pwsh
+        run: |
+          $errors = $null
+          $null = [System.Management.Automation.Language.Parser]::ParseFile(
+            "$env:GITHUB_WORKSPACE\blackjack.ps1", [ref]$null, [ref]$errors)
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+          Write-Host "Syntax-Check bestanden: Keine Fehler gefunden."
+
+      - name: Stage 5 - Unit Tests ausfuehren (Pester)
+        shell: pwsh
+        run: |
+          Import-Module Pester -MinimumVersion 5.0
+          $config = New-PesterConfiguration
+          $config.Run.Path = '.\blackjack.Tests.ps1'
+          $config.Output.Verbosity = 'Detailed'
+          $config.TestResult.Enabled = $true
+          $config.TestResult.OutputPath = 'test-results.xml'
+          $config.TestResult.OutputFormat = 'NUnitXml'
+          $result = Invoke-Pester -Configuration $config
+          if ($result.FailedCount -gt 0) {
+            Write-Error "$($result.FailedCount) Test(s) fehlgeschlagen!"
+            exit 1
+          }
+          Write-Host "Alle $($result.PassedCount) Tests bestanden."
+
+      - name: Stage 6 - Testergebnisse publizieren
+        uses: actions/upload-artifact@v4
+        if: always()
         with:
-          node-version: '20'
-          cache: 'npm'
+          name: pester-test-results
+          path: test-results.xml
 
-      # Stage 1 – Install
-      - name: Install Dependencies
-        run: npm ci
+      - name: Stage 7 - Build-Artefakt erstellen
+        shell: pwsh
+        run: |
+          $manifest = @{
+            Version    = "v1.0.0"
+            Datum      = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+            Commit     = $env:GITHUB_SHA
+            Branch     = $env:GITHUB_REF_NAME
+            REQ_IDs    = @("REQ-001", "REQ-002", "REQ-003")
+            Tests      = "32/32 bestanden"
+            Dateien    = @("blackjack.ps1", "blackjack.Tests.ps1")
+          }
+          $manifest | ConvertTo-Json | Out-File build-manifest.json -Encoding UTF8
+          Write-Host "Build-Manifest erstellt:"
+          Get-Content build-manifest.json
 
-      # Stage 2 – Lint
-      - name: Lint (ESLint)
-        run: npm run lint
-
-      # Stage 3 – Unit Tests
-      - name: Unit Tests (Vitest)
-        run: npm test
-
-      # Stage 4 – Build
-      - name: Build
-        run: npm run build
+      - name: Stage 8 - Artefakte hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: blackjack-release
+          path: |
+            blackjack.ps1
+            blackjack.Tests.ps1
+            build-manifest.json

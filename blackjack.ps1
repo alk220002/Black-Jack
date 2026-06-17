@@ -1,4 +1,4 @@
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 $script:Wins = 0
@@ -20,21 +20,17 @@ function Write-Header {
 
 function Get-SuitSymbol {
     param([string]$Suit)
-
     switch ($Suit) {
-        "Herz" { return "H" }
-        "Karo" { return "D" }
-        "Pik" { return "S" }
-        "Kreuz" { return "C" }
+        "Herz"  { return "♥" }
+        "Karo"  { return "♦" }
+        "Pik"   { return "♠" }
+        "Kreuz" { return "♣" }
     }
 }
 
 function Get-SuitColor {
     param([string]$Suit)
-
-    if ($Suit -in @("Herz", "Karo")) {
-        return "Red"
-    }
+    if ($Suit -in @("Herz", "Karo")) { return "Magenta" }
     return "White"
 }
 
@@ -99,18 +95,19 @@ function Show-Hand {
         Write-Host -NoNewline "  "
         for ($i = 0; $i -lt $Hand.Count; $i++) {
             $hidden = ($HideFirstCard -and $i -eq 0)
-            $card = $Hand[$i]
-            $symbol = if ($hidden) { "?" } else { Get-SuitSymbol $card.Suit }
-            $rank = if ($hidden) { "?" } else { $card.Rank }
-            $color = if ($hidden) { "DarkGray" } else { Get-SuitColor $card.Suit }
-            $rankText = $rank.PadRight(2)
+            $card   = $Hand[$i]
+            $sym    = if ($hidden) { "?" } else { Get-SuitSymbol $card.Suit }
+            $rank   = if ($hidden) { "?" } else { $card.Rank }
+            $color  = if ($hidden) { "DarkGray" } else { Get-SuitColor $card.Suit }
+            $rL     = $rank.PadRight(2)   # rank links oben
+            $rR     = $rank.PadLeft(2)    # rank rechts unten
 
             $text = switch ($line) {
-                0 { "+-----+ " }
-                1 { "|$rankText   | " }
-                2 { "|  $symbol  | " }
-                3 { "|   $rankText| " }
-                4 { "+-----+ " }
+                0 { "┌───────┐ " }
+                1 { "│$rL     │ " }
+                2 { "│   $sym   │ " }
+                3 { "│     $rR│ " }
+                4 { "└───────┘ " }
             }
             Write-Host -NoNewline $text -ForegroundColor $color
         }
